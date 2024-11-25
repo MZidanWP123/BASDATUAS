@@ -1,0 +1,146 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb" 
+  url      = env("DATABASE_URL") // URL database di .env
+  relationMode = "prisma"
+}
+
+model Role {
+  role_id   String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  name      String
+  users     User[]   @relation("UserRoles")
+}
+
+model User {
+  user_id   String  @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  name      String
+  email     String @unique
+  password  String
+  role_id   String?
+  role      Role?   @relation("UserRoles", fields: [role_id], references: [role_id])
+  orders    Order[]
+  consultations Consultation[]  @relation("UserConsultations")
+  carts     Cart[]  @relation("UserCart") // Relasi balik ke model Cart
+  consultations_as_seller Consultation[] @relation("SellerConsultations")
+}
+
+
+model Product {
+  product_id   String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  name         String
+  description  String?
+  price        Float
+  stock        Int
+  category_id  String?
+  category     Category? @relation(fields: [category_id], references: [category_id])
+  order_items  OrderItem[]
+  cart_items   CartItem[]
+  product_discounts ProductDiscount[]
+  // Menambahkan relasi balik untuk 'Return'
+  returns      Return[]
+}
+
+model Category {
+  category_id String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  name        String
+  products    Product[]
+}
+
+model Order {
+  order_id    String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  user_id     String
+  order_date  DateTime @default(now())
+  status      OrderStatus @default(pending)
+  user        User @relation(fields: [user_id], references: [user_id])
+  order_items OrderItem[]
+  returns     Return[]
+}
+
+model OrderItem {
+  order_item_id String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  order_id      String
+  product_id    String
+  quantity      Int
+  price         Float
+  order         Order @relation(fields: [order_id], references: [order_id])
+  product       Product @relation(fields: [product_id], references: [product_id])
+}
+
+model Discount {
+  discount_id  String  @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  name         String
+  discount_type DiscountType
+  amount       Float
+  start_date   DateTime?
+  end_date     DateTime?
+  applicable_to String?
+  product_discounts ProductDiscount[]
+}
+
+model ProductDiscount {
+  product_discount_id String @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  product_id          String
+  discount_id         String
+  product             Product @relation(fields: [product_id], references: [product_id])
+  discount            Discount @relation(fields: [discount_id], references: [discount_id])
+}
+
+model Cart {
+  cart_id    String   @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  user_id    String
+  user       User     @relation("UserCart", fields: [user_id], references: [user_id])
+  cart_items CartItem[]
+}
+
+model CartItem {
+  cart_item_id String @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  cart_id      String
+  product_id   String
+  quantity     Int
+  cart         Cart @relation(fields: [cart_id], references: [cart_id])
+  product      Product @relation(fields: [product_id], references: [product_id])
+}
+
+model Return {
+  return_id   String @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  order_id    String
+  product_id  String
+  return_date DateTime @default(now())
+  status      ReturnStatus @default(pending)
+  order       Order @relation(fields: [order_id], references: [order_id])
+  product     Product @relation(fields: [product_id], references: [product_id])
+}
+
+model Consultation {
+  consultation_id String @id @map("_id") // Ganti Int ke String dan tambahkan @map("_id")
+  user_id         String
+  seller_id       String
+  message         String
+  response        String?
+  created_at      DateTime @default(now())
+  user            User @relation("UserConsultations", fields: [user_id], references: [user_id])
+  seller          User @relation("SellerConsultations", fields: [seller_id], references: [user_id])
+}
+
+enum OrderStatus {
+  pending
+  processed
+  completed
+  cancelled
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+enum ReturnStatus {
+  pending
+  approved
+  rejected
+}
